@@ -5,15 +5,26 @@ const wss = new ws_1.WebSocketServer({ port: 8080 });
 let userCount = 0;
 let allSockets = [];
 wss.on("connection", (socket) => {
-    allSockets.push(socket);
-    console.log("user cpnnected ");
-    userCount++;
-    console.log("user connected" + userCount);
-    socket.on("message", (event) => {
-        console.log("message recieveed  " + event.toString());
-        for (let i = 0; i < allSockets.length; i++) {
-            const s = allSockets[i];
-            s.send(event.toString() + "sent fro the server");
+    socket.on("message", (message) => {
+        const parsedMessage = JSON.parse(message.toString()); // Fixed JSON parsing
+        if (parsedMessage.type === "join") {
+            allSockets.push({
+                socket,
+                room: parsedMessage.payload.roomId,
+            });
+        }
+        if (parsedMessage.type === "chat") {
+            let currentUserRoom = null;
+            for (let i = 0; i < allSockets.length; i++) {
+                if (allSockets[i].socket === socket) {
+                    currentUserRoom = allSockets[i].room;
+                }
+            }
+            for (let i = 0; i < allSockets.length; i++) {
+                if (allSockets[i].room === currentUserRoom) {
+                    allSockets[i].socket.send(parsedMessage.payload.message);
+                }
+            }
         }
     });
-});
+}); // <-- Make sure this closes properly
